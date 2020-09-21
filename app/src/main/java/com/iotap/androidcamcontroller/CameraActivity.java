@@ -43,8 +43,24 @@ public class CameraActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         // checking if camera exist on the device
         Log.d(CAMERA_ACTIVITY_ON_CREATE_TAG, "The device has a camera: " + String.valueOf(checkCameraHardware(this)));
-        // find Layout for the Camera view
+        Log.d(CAMERA_ACTIVITY_ON_CREATE_TAG, "Try to get camera instance.................");
+        setCameraInstance();
+        if (mCamera == null) {
+            Log.d(CAMERA_ACTIVITY_ON_CREATE_TAG, "Fail! Camera instance is not available");
+            this.finish();
+        }
+        Log.d(CAMERA_ACTIVITY_ON_CREATE_TAG, "Success! Camera instance has been created");
+
+        Log.d(CAMERA_ACTIVITY_ON_CREATE_TAG, "Try to create preview for the camera.................");
+        mPreview = new CameraPreview(this, mCamera);
+        if (mPreview == null) {
+            Log.d(CAMERA_ACTIVITY_ON_CREATE_TAG, "Fail! Camera preview is not created");
+            this.finish();
+        }
+        Log.d(CAMERA_ACTIVITY_ON_CREATE_TAG, "Success! Camera preview has been created");
+
         mCameraLayout = (FrameLayout) findViewById(R.id.camera_preview);
+        mCameraLayout.addView(mPreview);
         Button mCaptureButton = (Button) findViewById(R.id.button_capture);
 
         mCaptureButton.setOnClickListener(
@@ -68,27 +84,9 @@ public class CameraActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        Log.d(CAMERA_ACTIVITY_ON_RESUME_TAG, "Try to get camera instance.................");
+        Log.d(CAMERA_ACTIVITY_ON_RESUME_TAG, "Application resumed");
         setCameraInstance();
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        if (mCamera == null) {
-            Log.d(CAMERA_ACTIVITY_ON_RESUME_TAG, "Fail! Camera instance is not available");
-            this.finish();
-        }
-        Log.d(CAMERA_ACTIVITY_ON_RESUME_TAG, "Success! Camera instance has been created");
-        Log.d(CAMERA_ACTIVITY_ON_RESUME_TAG, "Try to create preview for the camera.................");
-        mPreview = new CameraPreview(this, mCamera);
-        if (mPreview == null) {
-            Log.d(CAMERA_ACTIVITY_ON_RESUME_TAG, "Fail! Camera preview is not created");
-            this.finish();
-        }
-
-        Log.d(CAMERA_ACTIVITY_ON_RESUME_TAG, "Success! Camera preview has been created");
-        mCameraLayout.addView(mPreview);
+        mPreview.setCamera(mCamera);
     }
 
     @Override
@@ -98,6 +96,7 @@ public class CameraActivity extends AppCompatActivity {
         mCamera.stopPreview();
         mCamera.setPreviewCallback(null);
         mCamera.release();
+        mCamera = null;
     }
 
     @Override
@@ -122,8 +121,11 @@ public class CameraActivity extends AppCompatActivity {
         }
     }
     private void setCameraInstance(){
+        if (mCamera != null)
+            return;
         try {
             mCamera = Camera.open(0); // attempt to get a Camera instance
+            Log.d(CAMERA_ACTIVITY_ON_RESUME_TAG, "Camera reopened");
         }
         catch (Exception e){
             e.printStackTrace();
