@@ -8,9 +8,14 @@ import android.hardware.Camera;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
-import android.view.View;
-import android.widget.Button;
 import android.widget.FrameLayout;
+
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
+import org.eclipse.paho.client.mqttv3.MqttCallback;
+import org.eclipse.paho.client.mqttv3.MqttClient;
+import org.eclipse.paho.client.mqttv3.MqttException;
+import org.eclipse.paho.client.mqttv3.MqttMessage;
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -19,7 +24,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class CameraActivity extends AppCompatActivity {
+public class CameraActivity extends AppCompatActivity implements MqttCallback {
     private static final String CAMERA_ACTIVITY_ON_CREATE_TAG = "ON_CREATE";
     private static final String CAMERA_ACTIVITY_ON_RESUME_TAG = "ON_RESUME";
     private static final String CAMERA_ACTIVITY_ON_START_TAG = "ON_START";
@@ -30,7 +35,13 @@ public class CameraActivity extends AppCompatActivity {
     private static final String CAMERA_ACTIVITY_GET_MEDIA_TAG = "GET_MEDIA";
 
 
-
+    static String topic        = "hello/world";
+    static String content      = "Message from MqttPublishSample";
+    static int qos             = 1;
+    static String broker       = "tcp://192.168.1.18:1883";
+    static String clientId     = "JavaSample";
+    static MemoryPersistence persistence = new MemoryPersistence();
+    MqttClient mqttClient;
 
 
     private CameraPreview mPreview;
@@ -39,9 +50,7 @@ public class CameraActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // set a layout for application
         setContentView(R.layout.activity_main);
-        // checking if camera exist on the device
         Log.d(CAMERA_ACTIVITY_ON_CREATE_TAG, "The device has a camera: " + String.valueOf(checkCameraHardware(this)));
         Log.d(CAMERA_ACTIVITY_ON_CREATE_TAG, "Try to get camera instance.................");
         setCameraInstance();
@@ -61,18 +70,13 @@ public class CameraActivity extends AppCompatActivity {
 
         mCameraLayout = (FrameLayout) findViewById(R.id.camera_preview);
         mCameraLayout.addView(mPreview);
-        Button mCaptureButton = (Button) findViewById(R.id.button_capture);
+        try {
+            mqttClient = new MqttClient(broker, clientId, persistence);
+            Log.d(CAMERA_ACTIVITY_ON_CREATE_TAG, "MQTT client has been created");
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
 
-        mCaptureButton.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        // get an image from the camera
-                        mCamera.takePicture(null, null, mPicture);
-                        //subscriber.publish();
-                    }
-                }
-        );
     }
 
     @Override
@@ -86,13 +90,26 @@ public class CameraActivity extends AppCompatActivity {
         super.onResume();
         Log.d(CAMERA_ACTIVITY_ON_RESUME_TAG, "Application resumed");
         setCameraInstance();
+        mCamera.setDisplayOrientation(90);
         mPreview.setCamera(mCamera);
+        try {
+            subscribeMQTTClient();
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         Log.d(CAMERA_ACTIVITY_ON_PAUSE_TAG, "Activity is paused");
+        try {
+            Log.d(CAMERA_ACTIVITY_ON_PAUSE_TAG, "Disconnecting MQTT client......");
+            mqttClient.disconnect();
+            Log.d(CAMERA_ACTIVITY_ON_PAUSE_TAG, "MQTT client has been disconnected");
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
         mCamera.stopPreview();
         mCamera.setPreviewCallback(null);
         mCamera.release();
@@ -150,6 +167,7 @@ public class CameraActivity extends AppCompatActivity {
                 fos.write(data);
                 fos.close();
                 Log.d(CAMERA_ACTIVITY_PICTURE_CALLBACK_TAG, "Picture is taken:" + pictureFile.getAbsolutePath());
+                mCamera.startPreview();
             } catch (FileNotFoundException e) {
                 Log.d(CAMERA_ACTIVITY_PICTURE_CALLBACK_TAG, "File not found: " + e.getMessage());
             } catch (IOException e) {
@@ -189,5 +207,30 @@ public class CameraActivity extends AppCompatActivity {
         return mediaFile;
     }
 
+
+    @Override
+    public void connectionLost(Throwable cause) {
+
+    }
+
+    @Override
+    public void messageArrived(String topic, MqttMessage message) throws Exception {
+        Log.d("MQTT", "Message arrived");
+        mCamera.takePicture(null, null, mPicture);
+    }
+
+    @Override
+    public void deliveryComplete(IMqttDeliveryToken token) {
+
+    }
+
+    void subscribeMQTTClient() throws MqttException {
+        mqttClient.connect();
+        Log.d("MQTT", "Client Connected");
+        mqttClient.setCallback(this);
+        Log.d("MQTT", "Callback is set");
+        mqttClient.subscribe(topic);
+        Log.d("MQTT", "Android subscribed");
+    }
 
 }
