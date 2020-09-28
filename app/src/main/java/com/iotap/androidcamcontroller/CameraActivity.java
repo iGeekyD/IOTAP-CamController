@@ -8,6 +8,7 @@ import android.hardware.Camera;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
@@ -76,7 +77,7 @@ public class CameraActivity extends AppCompatActivity implements MqttCallback {
         } catch (MqttException e) {
             e.printStackTrace();
         }
-
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
     @Override
