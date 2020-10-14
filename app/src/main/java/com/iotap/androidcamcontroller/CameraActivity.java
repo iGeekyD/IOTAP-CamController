@@ -11,12 +11,20 @@ import android.util.Log;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 
+import com.pengrad.telegrambot.Callback;
+import com.pengrad.telegrambot.TelegramBot;
+import com.pengrad.telegrambot.model.Message;
+import com.pengrad.telegrambot.model.Update;
+import com.pengrad.telegrambot.request.GetUpdates;
+import com.pengrad.telegrambot.response.GetUpdatesResponse;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 
 public class CameraActivity extends AppCompatActivity{
     private static final String CAMERA_ACTIVITY_ON_CREATE_TAG = "ON_CREATE";
@@ -31,6 +39,8 @@ public class CameraActivity extends AppCompatActivity{
     private CameraPreview mPreview;
     private Camera mCamera;
     private FrameLayout mCameraLayout;
+
+    private TelegramBot bot;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,6 +65,9 @@ public class CameraActivity extends AppCompatActivity{
         mCameraLayout = (FrameLayout) findViewById(R.id.camera_preview);
         mCameraLayout.addView(mPreview);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+        bot = new TelegramBot("1270963540:AAEuQ7n9g6TWi5jaMwCGE36dAMRzYiR_PkA");
+
     }
 
     @Override
@@ -70,6 +83,21 @@ public class CameraActivity extends AppCompatActivity{
         setCameraInstance();
         mCamera.setDisplayOrientation(90);
         mPreview.setCamera(mCamera);
+
+        GetUpdates getUpdates = new GetUpdates().limit(100).offset(0).timeout(0);
+        bot.execute(getUpdates, new Callback<GetUpdates, GetUpdatesResponse>() {
+            @Override
+            public void onResponse(GetUpdates request, GetUpdatesResponse response) {
+                List<Update> updates = response.updates();
+                Log.d(CAMERA_ACTIVITY_ON_RESUME_TAG, "Telegram message id" + updates.get(0).message().text());
+            }
+
+            @Override
+            public void onFailure(GetUpdates request, IOException e) {
+
+            }
+        });
+
     }
 
     @Override
