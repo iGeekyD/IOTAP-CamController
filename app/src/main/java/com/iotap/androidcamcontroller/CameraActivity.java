@@ -11,13 +11,6 @@ import android.util.Log;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 
-import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
-import org.eclipse.paho.client.mqttv3.MqttCallback;
-import org.eclipse.paho.client.mqttv3.MqttClient;
-import org.eclipse.paho.client.mqttv3.MqttException;
-import org.eclipse.paho.client.mqttv3.MqttMessage;
-import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -25,7 +18,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class CameraActivity extends AppCompatActivity implements MqttCallback {
+public class CameraActivity extends AppCompatActivity{
     private static final String CAMERA_ACTIVITY_ON_CREATE_TAG = "ON_CREATE";
     private static final String CAMERA_ACTIVITY_ON_RESUME_TAG = "ON_RESUME";
     private static final String CAMERA_ACTIVITY_ON_START_TAG = "ON_START";
@@ -34,16 +27,6 @@ public class CameraActivity extends AppCompatActivity implements MqttCallback {
     private static final String CAMERA_ACTIVITY_ON_DESTROY_TAG = "ON_DESTROY";
     private static final String CAMERA_ACTIVITY_PICTURE_CALLBACK_TAG = "PIC_CALLBACK";
     private static final String CAMERA_ACTIVITY_GET_MEDIA_TAG = "GET_MEDIA";
-
-
-    static String topic        = "hello/world";
-    static String content      = "Message from MqttPublishSample";
-    static int qos             = 1;
-    static String broker       = "tcp://192.168.1.18:1883";
-    static String clientId     = "JavaSample";
-    static MemoryPersistence persistence = new MemoryPersistence();
-    MqttClient mqttClient;
-
 
     private CameraPreview mPreview;
     private Camera mCamera;
@@ -71,12 +54,6 @@ public class CameraActivity extends AppCompatActivity implements MqttCallback {
 
         mCameraLayout = (FrameLayout) findViewById(R.id.camera_preview);
         mCameraLayout.addView(mPreview);
-        try {
-            mqttClient = new MqttClient(broker, clientId, persistence);
-            Log.d(CAMERA_ACTIVITY_ON_CREATE_TAG, "MQTT client has been created");
-        } catch (MqttException e) {
-            e.printStackTrace();
-        }
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
@@ -93,24 +70,13 @@ public class CameraActivity extends AppCompatActivity implements MqttCallback {
         setCameraInstance();
         mCamera.setDisplayOrientation(90);
         mPreview.setCamera(mCamera);
-        try {
-            subscribeMQTTClient();
-        } catch (MqttException e) {
-            e.printStackTrace();
-        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         Log.d(CAMERA_ACTIVITY_ON_PAUSE_TAG, "Activity is paused");
-        try {
-            Log.d(CAMERA_ACTIVITY_ON_PAUSE_TAG, "Disconnecting MQTT client......");
-            mqttClient.disconnect();
-            Log.d(CAMERA_ACTIVITY_ON_PAUSE_TAG, "MQTT client has been disconnected");
-        } catch (MqttException e) {
-            e.printStackTrace();
-        }
+
         mCamera.stopPreview();
         mCamera.setPreviewCallback(null);
         mCamera.release();
@@ -206,32 +172,6 @@ public class CameraActivity extends AppCompatActivity implements MqttCallback {
         File mediaFile = new File(mediaStorageDir.getPath() + File.separator +
                     "IMG_"+ timeStamp + ".jpg");
         return mediaFile;
-    }
-
-
-    @Override
-    public void connectionLost(Throwable cause) {
-
-    }
-
-    @Override
-    public void messageArrived(String topic, MqttMessage message) throws Exception {
-        Log.d("MQTT", "Message arrived");
-        mCamera.takePicture(null, null, mPicture);
-    }
-
-    @Override
-    public void deliveryComplete(IMqttDeliveryToken token) {
-
-    }
-
-    void subscribeMQTTClient() throws MqttException {
-        mqttClient.connect();
-        Log.d("MQTT", "Client Connected");
-        mqttClient.setCallback(this);
-        Log.d("MQTT", "Callback is set");
-        mqttClient.subscribe(topic);
-        Log.d("MQTT", "Android subscribed");
     }
 
 }
