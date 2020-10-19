@@ -7,6 +7,8 @@ import android.content.pm.PackageManager;
 import android.hardware.Camera;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.util.Log;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
@@ -36,15 +38,23 @@ public class CameraActivity extends AppCompatActivity{
     private static final String CAMERA_ACTIVITY_PICTURE_CALLBACK_TAG = "PIC_CALLBACK";
     private static final String CAMERA_ACTIVITY_GET_MEDIA_TAG = "GET_MEDIA";
 
+    private static final String LONG_POLLING_THREAD = "LONG_POLLING_THREAD";
+
     private CameraPreview mPreview;
     private Camera mCamera;
     private FrameLayout mCameraLayout;
 
     private TelegramBot bot;
+    private HandlerThread hThread;
+    private Handler handler;
+
+    private final long eachSecond = 1000;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        /************************* CAMERA SETTINGS ***********************/
         Log.d(CAMERA_ACTIVITY_ON_CREATE_TAG, "The device has a camera: " + String.valueOf(checkCameraHardware(this)));
         Log.d(CAMERA_ACTIVITY_ON_CREATE_TAG, "Try to get camera instance.................");
         setCameraInstance();
@@ -65,8 +75,11 @@ public class CameraActivity extends AppCompatActivity{
         mCameraLayout = (FrameLayout) findViewById(R.id.camera_preview);
         mCameraLayout.addView(mPreview);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        /************************* /CAMERA SETTINGS ***********************/
 
+        /************************* TELEGRAM BOT SETTINGS ***********************/
         bot = new TelegramBot("1270963540:AAEuQ7n9g6TWi5jaMwCGE36dAMRzYiR_PkA");
+        /************************* /TELEGRAM BOT SETTINGS ***********************/
 
     }
 
@@ -74,6 +87,19 @@ public class CameraActivity extends AppCompatActivity{
     protected void onStart() {
         super.onStart();
         Log.d(CAMERA_ACTIVITY_ON_START_TAG, "Activity is Started");
+        hThread = new HandlerThread("Bot Thread");
+        Log.d(CAMERA_ACTIVITY_ON_START_TAG, "Creating background thread for bot");
+        hThread.start();
+        handler = new Handler(hThread.getLooper());
+        Log.d(CAMERA_ACTIVITY_ON_START_TAG, "Thread created: " + hThread.getThreadId());
+        Runnable longPoll = new Runnable() {
+            @Override
+            public void run() {
+                Log.d(LONG_POLLING_THREAD, "Try to poll message from thread: " + hThread.getThreadId());
+                handler.postDelayed(this, eachSecond);
+            }
+        };
+        handler.postDelayed(longPoll, eachSecond);
     }
 
     @Override
@@ -84,7 +110,7 @@ public class CameraActivity extends AppCompatActivity{
         mCamera.setDisplayOrientation(90);
         mPreview.setCamera(mCamera);
 
-        GetUpdates getUpdates = new GetUpdates().limit(100).offset(0).timeout(0);
+        /*GetUpdates getUpdates = new GetUpdates().limit(100).offset(0).timeout(0);
         bot.execute(getUpdates, new Callback<GetUpdates, GetUpdatesResponse>() {
             @Override
             public void onResponse(GetUpdates request, GetUpdatesResponse response) {
@@ -96,19 +122,21 @@ public class CameraActivity extends AppCompatActivity{
             public void onFailure(GetUpdates request, IOException e) {
 
             }
-        });
+        });*/
 
     }
 
     @Override
     protected void onPause() {
-        super.onPause();
-        Log.d(CAMERA_ACTIVITY_ON_PAUSE_TAG, "Activity is paused");
+        hThread.quit();
 
         mCamera.stopPreview();
         mCamera.setPreviewCallback(null);
         mCamera.release();
         mCamera = null;
+
+        super.onPause();
+        Log.d(CAMERA_ACTIVITY_ON_PAUSE_TAG, "Activity is paused");
     }
 
     @Override
