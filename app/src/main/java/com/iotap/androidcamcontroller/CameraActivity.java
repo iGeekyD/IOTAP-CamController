@@ -87,42 +87,41 @@ public class CameraActivity extends AppCompatActivity{
     protected void onStart() {
         super.onStart();
         Log.d(CAMERA_ACTIVITY_ON_START_TAG, "Activity is Started");
-        hThread = new HandlerThread("Bot Thread");
-        Log.d(CAMERA_ACTIVITY_ON_START_TAG, "Creating background thread for bot");
-        hThread.start();
-        handler = new Handler(hThread.getLooper());
-        Log.d(CAMERA_ACTIVITY_ON_START_TAG, "Thread created: " + hThread.getThreadId());
-        Runnable longPoll = new Runnable() {
-            @Override
-            public void run() {
-                Log.d(LONG_POLLING_THREAD, "Try to poll message from thread: " + hThread.getThreadId());
-                handler.postDelayed(this, eachSecond);
-            }
-        };
-        handler.postDelayed(longPoll, eachSecond);
+
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         Log.d(CAMERA_ACTIVITY_ON_RESUME_TAG, "Application resumed");
+        /************************* CAMERA START ***********************/
         setCameraInstance();
         mCamera.setDisplayOrientation(90);
         mPreview.setCamera(mCamera);
-
-        /*GetUpdates getUpdates = new GetUpdates().limit(100).offset(0).timeout(0);
-        bot.execute(getUpdates, new Callback<GetUpdates, GetUpdatesResponse>() {
+        /************************* /CAMERA START ***********************/
+        /************************* BOT START ***********************/
+        hThread = new HandlerThread("Bot Thread");
+        Log.d(CAMERA_ACTIVITY_ON_RESUME_TAG, "Creating background thread for bot");
+        hThread.start();
+        handler = new Handler(hThread.getLooper());
+        Log.d(CAMERA_ACTIVITY_ON_RESUME_TAG, "Thread created: " + hThread.getThreadId());
+        final GetUpdates getUpdates = new GetUpdates().limit(100).offset(0).timeout(0);
+        Runnable longPoll = new Runnable() {
             @Override
-            public void onResponse(GetUpdates request, GetUpdatesResponse response) {
-                List<Update> updates = response.updates();
-                Log.d(CAMERA_ACTIVITY_ON_RESUME_TAG, "Telegram message id" + updates.get(0).message().text());
+            public void run() {
+                GetUpdatesResponse updatesResponse = bot.execute(getUpdates);
+                List<Update> updates = updatesResponse.updates();
+                if (updates.size() > 0) {
+                    Update update = updates.get(updates.size() - 1);
+                    getUpdates.offset(update.updateId() + 1);
+                    Log.d(CAMERA_ACTIVITY_ON_RESUME_TAG, "Telegram message text " + update.message().text());
+                }
+                handler.postDelayed(this, eachSecond);
             }
+        };
+        handler.postDelayed(longPoll, eachSecond);
+        /************************* /BOT START ***********************/
 
-            @Override
-            public void onFailure(GetUpdates request, IOException e) {
-
-            }
-        });*/
 
     }
 
