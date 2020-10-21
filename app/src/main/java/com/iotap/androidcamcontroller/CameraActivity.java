@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.util.Log;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
@@ -48,7 +49,7 @@ public class CameraActivity extends AppCompatActivity{
     private HandlerThread hThread;
     private Handler handler;
 
-    private final long eachSecond = 1000;
+    private final long eachSecond = 5000;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -115,6 +116,14 @@ public class CameraActivity extends AppCompatActivity{
                     Update update = updates.get(updates.size() - 1);
                     getUpdates.offset(update.updateId() + 1);
                     Log.d(CAMERA_ACTIVITY_ON_RESUME_TAG, "Telegram message text " + update.message().text());
+                    if (update.message().text().equals("photo")) {
+                        new Handler(Looper.getMainLooper()).post(new Runnable() {
+                            @Override
+                            public void run() {
+                                mCamera.takePicture(null, null, mPicture);
+                            }
+                        });
+                    }
                 }
                 handler.postDelayed(this, eachSecond);
             }
