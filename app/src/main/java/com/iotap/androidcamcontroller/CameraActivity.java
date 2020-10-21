@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -19,7 +20,9 @@ import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.model.Message;
 import com.pengrad.telegrambot.model.Update;
 import com.pengrad.telegrambot.request.GetUpdates;
+import com.pengrad.telegrambot.request.SendPhoto;
 import com.pengrad.telegrambot.response.GetUpdatesResponse;
+import com.pengrad.telegrambot.response.SendResponse;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -50,6 +53,8 @@ public class CameraActivity extends AppCompatActivity{
     private Handler handler;
 
     private final long eachSecond = 5000;
+
+    private long chatId = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -114,6 +119,7 @@ public class CameraActivity extends AppCompatActivity{
                 List<Update> updates = updatesResponse.updates();
                 if (updates.size() > 0) {
                     Update update = updates.get(updates.size() - 1);
+                    chatId = update.message().chat().id();
                     getUpdates.offset(update.updateId() + 1);
                     Log.d(CAMERA_ACTIVITY_ON_RESUME_TAG, "Telegram message text " + update.message().text());
                     if (update.message().text().equals("photo")) {
@@ -198,6 +204,15 @@ public class CameraActivity extends AppCompatActivity{
                 fos.write(data);
                 fos.close();
                 Log.d(CAMERA_ACTIVITY_PICTURE_CALLBACK_TAG, "Picture is taken:" + pictureFile.getAbsolutePath());
+                new AsyncTask<byte[], Integer, Void>() {
+                    @Override
+                    protected Void doInBackground(byte[]... bytes) {
+                        SendPhoto request = new SendPhoto(chatId, bytes[0]);
+                        SendResponse sendResponse = bot.execute(request);
+                        return null;
+                    }
+                }.execute(data);
+
                 mCamera.startPreview();
             } catch (FileNotFoundException e) {
                 Log.d(CAMERA_ACTIVITY_PICTURE_CALLBACK_TAG, "File not found: " + e.getMessage());
